@@ -1,0 +1,8 @@
+# Secretos reales: nunca subir
+*secret*.yaml
+!*secret.example.yaml
+*.kubeconfig
+kubeconfig*
+.env
+*.pem
+*.key

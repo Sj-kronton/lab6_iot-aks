@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prestashop-pvc
+  namespace: prestashop
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: managed-csi
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prestashop
+  namespace: prestashop
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: prestashop
+  template:
+    metadata:
+      labels:
+        app: prestashop
+        portal: prestashop
+    spec:
+      containers:
+        - name: prestashop
+          image: prestashop/prestashop:latest
+          ports:
+            - containerPort: 80
+          env:
+            - name: DB_SERVER
+              value: prestashop-db
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: prestashop-db-secret
+                  key: MYSQL_DATABASE
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: prestashop-db-secret
+                  key: MYSQL_USER
+            - name: DB_PASSWD
+              valueFrom:
+                secretKeyRef:
+                  name: prestashop-db-secret
+                  key: MYSQL_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+          volumeMounts:
+            - name: ps-data
+              mountPath: /var/www/html
+              subPath: html
+      volumes:
+        - name: ps-data
+          persistentVolumeClaim:
+            claimName: prestashop-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prestashop
+  namespace: prestashop
+spec:
+  type: LoadBalancer
+  selector:
+    app: prestashop
+  ports:
+    - port: 80
+      targetPort: 80
